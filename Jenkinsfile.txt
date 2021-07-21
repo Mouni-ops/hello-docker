@@ -1,0 +1,66 @@
+pipeline {
+    agent any 
+    environment {
+        def mavenHome = tool name: "maven", type: "maven"   /**it will try to get the maven path of where maven installed **/
+        def mavenCMD="${mavenHome}/bin/mvn "
+        def dockerRun ="docker run -d --name hello-docker-jenkins -p 8090:8080 9611881422/hello-world"
+    }
+    stages {
+        stage ("Git checkoiut") {
+            steps {
+                git credentialsId: 'Git_creds', url: 'https://github.com/Mouni-ops/hello-docker'
+            }
+        }
+        stage ("mvn build") {
+            steps {
+                sh "${mavenCMD} clean package"
+            }
+        }
+        stage ("copy war file into remote server docker") {
+            steps {
+                sshagent(['Docker_host']) {
+                    sh "scp -o StrictHostKeyChecking=no webapp/target/webapp.war ubuntu@34.215.250.142:/opt/docker"
+                    
+            
+                    
+                    
+                    
+                }
+                    
+            }
+        }
+        stage ("build docker image") {
+            
+            steps {
+                sh "docker build -t 9611881422/hello-world ."
+                
+            }
+        } 
+        
+        stage ("docker push"){
+            steps {
+                withCredentials([string(credentialsId: 'docker_password', variable: 'docker_password')]) {
+                    
+                    sh "docker login -u 9611881422 -p ${docker_password}"
+                }
+                    sh "docker push 9611881422/hello-world"
+                
+            }
+         
+           
+        }
+        stage ("run container in docker server") {
+            steps {
+                sshagent(['ssh_to_docker_host']) {
+                    sh "ssh -o StrictHostKeyChecking=no ubuntu@34.215.250.142 ${dockerRun}"
+    
+                }
+                
+            }
+            
+            
+        }
+        
+        
+    }
+}
